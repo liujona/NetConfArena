@@ -1,0 +1,25 @@
+r1_names: [Blossom, Daisy, Poppy, Iris, Aster]
+r2_names: [Lily, Lotus, Violet, Clover, Fern]
+r3_names: [Rose, Orchid, Dahlia, Peony, Flora]
+r4_names: [Tulip, Marigold, Jasmine, Camellia, Laurel]
+
+r1_lo0_pool: "4.0.0.0/8"
+r1_lo1_pool: "44.0.0.0/8"
+r2_lo0_pool: "2.0.0.0/8"
+r2_lo1_pool: "22.0.0.0/8"
+r3_lo0_pool: "3.0.0.0/8"
+r3_lo1_pool: "33.0.0.0/8"
+r4_lo0_pool: "1.0.0.0/8"
+r4_lo1_pool: "11.0.0.0/8"
+
+link1_pool: "192.168.0.0/16"
+link1_prefix_lens: [24]
+link2_pool: "192.168.0.0/16"
+link2_prefix_lens: [24]
+link3_pool: "192.168.0.0/16"
+link3_prefix_lens: [24]
+link4_pool: "192.168.0.0/16"
+link4_prefix_lens: [24]
+
+# SONiC-VS only has Ethernet ports
+link_media_options: [ethernet]

@@ -1,0 +1,18 @@
+r1_names: [Cotton, Linen, Hemp, Denim, Canvas]
+r2_names: [Flax, Jute, Ramie, Sisal, Kenaf]
+r3_names: [Silk, Satin, Velvet, Taffeta, Chiffon]
+r4_names: [Wool, Cashmere, Mohair, Fleece, Tweed]
+
+r1_lo0_pool: "4.0.0.0/8"
+r2_lo0_pool: "3.0.0.0/8"
+r3_lo0_pool: "2.0.0.0/8"
+r4_lo0_pool: "1.0.0.0/8"
+
+link1_pool: "192.168.0.0/16"
+link1_prefix_lens: [24]
+link2_pool: "192.168.0.0/16"
+link2_prefix_lens: [24]
+link3_pool: "192.168.0.0/16"
+link3_prefix_lens: [24]
+
+link_media_options: [fastethernet]

@@ -1,0 +1,21 @@
+r1_names: [Ballast, Alpha, North, Spoke1, Aria]
+r2_names: [Beam, Beta, East, Spoke2, Brio]
+r3_names: [Brick, Gamma, South, Spoke3, Coda]
+
+ospf_router_ids: [11.11.11.11, 22.22.22.22, 33.33.33.33, 44.44.44.44, 55.55.55.55]
+
+r1_loopback_pool: "1.0.0.0/8"
+r2_loopback_pool: "2.0.0.0/8"
+r3_loopback_pool: "3.0.0.0/8"
+
+link1_pool: "192.168.0.0/16"
+link1_prefix_lens: [24, 25, 26]
+link2_pool: "192.168.0.0/16"
+link2_prefix_lens: [24, 25, 26]
+link3_pool: "192.168.0.0/16"
+link3_prefix_lens: [24, 25, 26]
+
+# SONiC-VS only has Ethernet ports
+link1_media_options: [ethernet]
+link2_media_options: [ethernet]
+link3_media_options: [ethernet]

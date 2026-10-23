@@ -1,0 +1,217 @@
+{
+    "params": {
+        "router1_name": {
+            "type": "choice",
+            "options": "r1_names"
+        },
+        "router2_name": {
+            "type": "choice",
+            "options": "r2_names",
+            "different_from": [
+                "router1_name"
+            ]
+        },
+        "link1_media": {
+            "type": "choice",
+            "options": "link1_media_options"
+        },
+        "_link1": {
+            "type": "random_subnet",
+            "pool": "link1_pool",
+            "prefix_len": "link1_prefix_lens",
+            "default": "192.168.12.0/24"
+        },
+        "link1_network": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "network"
+        },
+        "link1_mask": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "netmask"
+        },
+        "link1_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "prefixlen"
+        },
+        "link1_wildcard": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "wildcard"
+        },
+        "link1_cidr": {
+            "type": "format",
+            "template": "{link1_network}/{link1_prefix_len}"
+        },
+        "link1_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 1
+        },
+        "link1_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 2
+        }
+    },
+    "scenario": "BGP Local AS",
+    "goals": "• Configure EBGP on router {{router1_name}} and use AS number 1.\n• Configure EBGP on router {{router2_name}} and use AS number 2.\n• You have to configure router {{router2_name}} with the “neighbor remote-as 100” command.\n• Ensure your EBGP configuration is working.",
+    "topology_model": {
+        "nodes": [
+            "r1",
+            "r2"
+        ],
+        "links": [
+            {
+                "id": "link1",
+                "nodes": [
+                    "r1",
+                    "r2"
+                ],
+                "media": "{{link1_media}}"
+            }
+        ]
+    },
+    "topology_attributes": {
+        "nodes": {
+            "r1": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router1_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": -583.129075763,
+                "y": -72.2045814642
+            },
+            "r2": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router2_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": -301.700576851,
+                "y": -70.7903679019
+            }
+        },
+        "notes": [
+            {
+                "color": "#0000ff",
+                "text": ".2",
+                "x": -327.390439689,
+                "y": -73.2132034356
+            },
+            {
+                "color": "#0000ff",
+                "text": ".1",
+                "x": -516.895057047,
+                "y": -74.4264068712
+            },
+            {
+                "color": "#0000ff",
+                "text": "{{link1_network}} /24",
+                "x": -478.711290863,
+                "y": -75.6396103068
+            }
+        ],
+        "ellipses": [
+            {
+                "border_style": 2,
+                "fill_color": "#55ff7f",
+                "height": 123.632467632,
+                "width": 133.643181644,
+                "x": -609.72705551,
+                "y": -111.923881554,
+                "z": -2.0
+            },
+            {
+                "border_style": 2,
+                "fill_color": "#aaffff",
+                "height": 123.632467632,
+                "width": 133.643181644,
+                "x": -342.239682094,
+                "y": -113.844191771,
+                "z": -2.0
+            }
+        ]
+    },
+    "startup_configs": {
+        "{{router1_name}}": [
+            "config interface ip add {{router1_link1_iface}} {{link1_ip1}}/{{link1_prefix_len}}",
+            "config interface startup {{router1_link1_iface}}"
+        ],
+        "{{router2_name}}": [
+            "config interface ip add {{router2_link1_iface}} {{link1_ip2}}/{{link1_prefix_len}}",
+            "config interface startup {{router2_link1_iface}}"
+        ]
+    },
+    "groundtruth_configs": {
+        "{{router1_name}}": [
+            "router bgp 1",
+            "no bgp ebgp-requires-policy",
+            "neighbor {{link1_ip2}} remote-as 2",
+            "neighbor {{link1_ip2}} local-as 100 no-prepend replace-as",
+            "exit"
+        ],
+        "{{router2_name}}": [
+            "router bgp 2",
+            "no bgp ebgp-requires-policy",
+            "neighbor {{link1_ip1}} remote-as 100",
+            "exit"
+        ]
+    },
+    "testcases": [
+        {
+            "goal": "Configure EBGP on router {{router1_name}} and use AS number 1.",
+            "testcase": [
+                {
+                    "id": "1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp summary json\"",
+                    "expected_result": {
+                        "protocol": "bgp",
+                        "as_number": "1"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "Configure EBGP on router {{router2_name}} and use AS number 2.",
+            "testcase": [
+                {
+                    "id": "2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp summary json\"",
+                    "expected_result": {
+                        "protocol": "bgp",
+                        "as_number": "2"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "You have to configure router {{router2_name}} with the “neighbor remote-as 100” command.",
+            "testcase": []
+        },
+        {
+            "goal": "Ensure your EBGP configuration is working.",
+            "testcase": [
+                {
+                    "id": "3",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp neighbors json\"",
+                    "expected_result": {
+                        "neighbor": "{{link1_ip1}}",
+                        "remote_as": "100",
+                        "bgp_state": "Established"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+r1_names: [Aniston, Adams, Stone, Portman, Moore]
+r2_names: [Bullock, Berry, Kidman, Winslet, Foster]
+r3_names: [Diaz, Davis, Taylor, Monroe, Hepburn]
+r4_names: [Parker, Powell, Grant, Cooper, Newman]
+r5_names: [Roberts, Reeves, Hanks, Cruise, Damon]
+r6_names: [Witherspoon, Weaver, Streep, Fonda, Blanchett]
+
+r1_lo0_pool: "4.0.0.0/8"
+r2_lo0_pool: "1.0.0.0/8"
+r3_lo0_pool: "3.0.0.0/8"
+r4_lo0_pool: "5.0.0.0/8"
+r5_lo0_pool: "6.0.0.0/8"
+r6_lo0_pool: "2.0.0.0/8"
+
+link1_pool: "192.168.0.0/16"
+link1_prefix_lens: [24]
+link2_pool: "192.168.0.0/16"
+link2_prefix_lens: [24]
+link3_pool: "192.168.0.0/16"
+link3_prefix_lens: [24]
+link4_pool: "192.168.0.0/16"
+link4_prefix_lens: [24]
+link5_pool: "192.168.0.0/16"
+link5_prefix_lens: [24]
+link6_pool: "192.168.0.0/16"
+link6_prefix_lens: [24]
+
+link_media_options: [fastethernet]

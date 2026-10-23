@@ -1,0 +1,407 @@
+{
+    "params": {
+        "bgp_as": {
+            "type": "fixed",
+            "default": "100"
+        },
+        "router1_name": {
+            "type": "choice",
+            "options": "r1_names"
+        },
+        "router2_name": {
+            "type": "choice",
+            "options": "r2_names",
+            "different_from": [
+                "router1_name"
+            ]
+        },
+        "_r1_lo0": {
+            "type": "random_subnet",
+            "pool": "r1_lo0_pool",
+            "prefix_len": 24,
+            "default": "1.1.1.0/24"
+        },
+        "router1_lo0_ip": {
+            "type": "subnet_attr",
+            "subnet": "_r1_lo0",
+            "attr": "host",
+            "index": 1
+        },
+        "router1_lo0_mask": {
+            "type": "subnet_attr",
+            "subnet": "_r1_lo0",
+            "attr": "netmask"
+        },
+        "_r2_lo0": {
+            "type": "random_subnet",
+            "pool": "r2_lo0_pool",
+            "prefix_len": 24,
+            "default": "2.2.2.0/24"
+        },
+        "router2_lo0_ip": {
+            "type": "subnet_attr",
+            "subnet": "_r2_lo0",
+            "attr": "host",
+            "index": 2
+        },
+        "router2_lo0_mask": {
+            "type": "subnet_attr",
+            "subnet": "_r2_lo0",
+            "attr": "netmask"
+        },
+        "_link1": {
+            "type": "random_subnet",
+            "pool": "link1_pool",
+            "prefix_len": "link1_prefix_lens",
+            "default": "192.168.122.0/24"
+        },
+        "link1_network": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "network"
+        },
+        "link1_mask": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "netmask"
+        },
+        "link1_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "prefixlen"
+        },
+        "link1_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 1
+        },
+        "link1_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 2
+        },
+        "link1_media": {
+            "type": "choice",
+            "options": "link1_media_options"
+        },
+        "_link2": {
+            "type": "random_subnet",
+            "pool": "link2_pool",
+            "prefix_len": "link2_prefix_lens",
+            "no_overlap": [
+                "_link1"
+            ],
+            "default": "192.168.112.0/24"
+        },
+        "link2_network": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "network"
+        },
+        "link2_mask": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "netmask"
+        },
+        "link2_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "prefixlen"
+        },
+        "link2_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "host",
+            "index": 1
+        },
+        "link2_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "host",
+            "index": 2
+        },
+        "link2_media": {
+            "type": "choice",
+            "options": "link2_media_options"
+        },
+        "r1_lo0_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_r1_lo0",
+            "attr": "prefixlen"
+        },
+        "r2_lo0_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_r2_lo0",
+            "attr": "prefixlen"
+        }
+    },
+    "scenario": "BGP Update Source",
+    "goals": "• Configure OSPF on both routers, advertise all networks in area 0.\n• Ensure you have full reachability and can ping both loopbacks.\n• Configure BGP AS {{bgp_as}} on both routers, do not advertise any networks.\n• Make sure that whenever a single link goes down, the BGP neighbor relationship will not reset itself.",
+    "startup_configs": {
+        "{{router1_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router1_lo0_ip}}/{{r1_lo0_prefix_len}}",
+            "route-map RM_SET_SRC permit 10",
+            "set src {{router1_lo0_ip}}",
+            "exit",
+            "config interface ip add {{router1_link1_iface}} {{link1_ip1}}/{{link1_prefix_len}}",
+            "config interface startup {{router1_link1_iface}}",
+            "config interface ip add {{router1_link2_iface}} {{link2_ip1}}/{{link2_prefix_len}}",
+            "config interface startup {{router1_link2_iface}}"
+        ],
+        "{{router2_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router2_lo0_ip}}/{{r2_lo0_prefix_len}}",
+            "route-map RM_SET_SRC permit 10",
+            "set src {{router2_lo0_ip}}",
+            "exit",
+            "config interface ip add {{router2_link1_iface}} {{link1_ip2}}/{{link1_prefix_len}}",
+            "config interface startup {{router2_link1_iface}}",
+            "config interface ip add {{router2_link2_iface}} {{link2_ip2}}/{{link2_prefix_len}}",
+            "config interface startup {{router2_link2_iface}}"
+        ]
+    },
+    "groundtruth_configs": {
+        "{{router1_name}}": [
+            "router ospf",
+            "network 0.0.0.0/32 area 0",
+            "exit",
+            "router bgp {{bgp_as}}",
+            "bgp router-id {{router1_lo0_ip}}",
+            "no bgp ebgp-requires-policy",
+            "neighbor {{router2_lo0_ip}} remote-as {{bgp_as}}",
+            "neighbor {{router2_lo0_ip}} update-source Loopback0",
+            "exit"
+        ],
+        "{{router2_name}}": [
+            "router ospf",
+            "network 0.0.0.0/32 area 0",
+            "exit",
+            "router bgp {{bgp_as}}",
+            "bgp router-id {{router2_lo0_ip}}",
+            "no bgp ebgp-requires-policy",
+            "neighbor {{router1_lo0_ip}} remote-as {{bgp_as}}",
+            "neighbor {{router1_lo0_ip}} update-source Loopback0",
+            "exit"
+        ]
+    },
+    "testcases": [
+        {
+            "goal": "Configure OSPF on both routers, advertise all networks in area 0.",
+            "testcase": [
+                {
+                    "id": "1-1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": {
+                        "op": "contains_all",
+                        "value": [
+                            {
+                                "interface": "Loopback0",
+                                "area": "0"
+                            },
+                            {
+                                "interface": "{{router1_link1_iface}}",
+                                "area": "0"
+                            },
+                            {
+                                "interface": "{{router1_link2_iface}}",
+                                "area": "0"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "1-2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": {
+                        "op": "contains_all",
+                        "value": [
+                            {
+                                "interface": "Loopback0",
+                                "area": "0"
+                            },
+                            {
+                                "interface": "{{router2_link1_iface}}",
+                                "area": "0"
+                            },
+                            {
+                                "interface": "{{router2_link2_iface}}",
+                                "area": "0"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "Ensure you have full reachability and can ping both loopbacks.",
+            "testcase": [
+                {
+                    "id": "2-1",
+                    "node": "{{router1_name}}",
+                    "command": "ping -c 5 {{router2_lo0_ip}}",
+                    "expected_result": {
+                        "success_pct": {
+                            "op": ">",
+                            "value": "0"
+                        }
+                    }
+                },
+                {
+                    "id": "2-2",
+                    "node": "{{router2_name}}",
+                    "command": "ping -c 5 {{router1_lo0_ip}}",
+                    "expected_result": {
+                        "success_pct": {
+                            "op": ">",
+                            "value": "0"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "Configure BGP AS {{bgp_as}} on both routers, do not advertise any networks.",
+            "testcase": [
+                {
+                    "id": "3-1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp json\"",
+                    "expected_result": {
+                        "op": "empty"
+                    }
+                },
+                {
+                    "id": "3-2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp json\"",
+                    "expected_result": {
+                        "op": "empty"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "Make sure that whenever a single link goes down, the BGP neighbor relationship will not reset itself.",
+            "testcase": [
+                {
+                    "id": "4-1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp neighbors json\"",
+                    "expected_result": {
+                        "op": "contains_all",
+                        "value": [
+                            {
+                                "neighbor": "{{router2_lo0_ip}}",
+                                "remote_as": "{{bgp_as}}",
+                                "bgp_state": "Established",
+                                "localhost_ip": "{{router1_lo0_ip}}",
+                                "remote_ip": "{{router2_lo0_ip}}"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "4-2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip bgp neighbors json\"",
+                    "expected_result": {
+                        "op": "contains_all",
+                        "value": [
+                            {
+                                "neighbor": "{{router1_lo0_ip}}",
+                                "remote_as": "{{bgp_as}}",
+                                "bgp_state": "Established",
+                                "localhost_ip": "{{router2_lo0_ip}}",
+                                "remote_ip": "{{router1_lo0_ip}}"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ],
+    "topology_model": {
+        "nodes": [
+            "r1",
+            "r2"
+        ],
+        "links": [
+            {
+                "id": "link1",
+                "nodes": [
+                    "r1",
+                    "r2"
+                ],
+                "media": "{{link1_media}}"
+            },
+            {
+                "id": "link2",
+                "nodes": [
+                    "r1",
+                    "r2"
+                ],
+                "media": "{{link2_media}}"
+            }
+        ]
+    },
+    "topology_attributes": {
+        "nodes": {
+            "r1": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router1_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": 35.0,
+                "y": 8.0
+            },
+            "r2": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router2_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": 297.0,
+                "y": 8.0
+            }
+        },
+        "notes": [
+            {
+                "color": "#323232",
+                "text": "{{link2_network}} /{{link2_prefix_len}}",
+                "x": 135.8,
+                "y": -30.1
+            },
+            {
+                "color": "#323232",
+                "text": "AS {{bgp_as}}",
+                "x": 171.8,
+                "y": -78.2
+            },
+            {
+                "color": "#323232",
+                "text": "{{link1_network}} /{{link1_prefix_len}}",
+                "x": 133.6,
+                "y": 65.4
+            }
+        ],
+        "ellipses": [
+            {
+                "border_style": 2,
+                "fill_color": "#ffff7f",
+                "height": 216.2,
+                "width": 437.0,
+                "x": -16.9,
+                "y": -88.2,
+                "z": -1.0
+            }
+        ]
+    }
+}

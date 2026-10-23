@@ -1,0 +1,137 @@
+confederation_as_options:
+- 2345
+- 64512
+- 64520
+- 64530
+router6_member_as_options:
+- 2
+- 12
+- 22
+router2_member_as_options:
+- 30
+- 31
+- 32
+router5_member_as_options:
+- 40
+- 41
+- 42
+router1_member_as_options:
+- 50
+- 51
+- 52
+external_as_options:
+- 1
+- 6
+- 11
+- 16
+- 21
+- 26
+- 31
+- 36
+ospf_process_ids:
+- 1
+- 10
+- 20
+ospf_areas:
+- 0
+
+r1_names:
+- Crusher
+- Atlas
+- Beacon
+- Cobalt
+- Delta
+- Ember
+- Falcon
+- Glacier
+- Harbor
+r2_names:
+- Data
+- Ivory
+- Jasper
+- Kepler
+- Lagoon
+- Matrix
+- Nimbus
+- Orion
+- Prairie
+r3_names:
+- Picard
+- Quartz
+- Rocket
+- Summit
+- Titan
+- Union
+- Vector
+- Willow
+- Xray
+r4_names:
+- Riker
+- Yukon
+- Zenith
+- Apollo
+- Bison
+- Canyon
+- Drift
+r5_names:
+- Worf
+r6_names:
+- laForge
+link1_media_options:
+- fastethernet
+link1_pool: 192.168.0.0/16
+link1_prefix_lens:
+- 24
+link2_media_options:
+- fastethernet
+link2_pool: 192.168.0.0/16
+link2_prefix_lens:
+- 24
+link3_media_options:
+- fastethernet
+link3_pool: 192.168.0.0/16
+link3_prefix_lens:
+- 24
+link4_media_options:
+- fastethernet
+link4_pool: 192.168.0.0/16
+link4_prefix_lens:
+- 24
+link5_media_options:
+- fastethernet
+link5_pool: 192.168.0.0/16
+link5_prefix_lens:
+- 24
+link6_media_options:
+- fastethernet
+link6_pool: 192.168.0.0/16
+link6_prefix_lens:
+- 24
+link7_media_options:
+- fastethernet
+link7_pool: 192.168.0.0/16
+link7_prefix_lens:
+- 24
+link8_media_options:
+- fastethernet
+link8_pool: 192.168.0.0/16
+link8_prefix_lens:
+- 24
+r1_loopback0_pool: 5.0.0.0/8
+r1_loopback0_prefix_lens:
+- 24
+r2_loopback0_pool: 3.0.0.0/8
+r2_loopback0_prefix_lens:
+- 24
+r3_loopback0_pool: 1.0.0.0/8
+r3_loopback0_prefix_lens:
+- 24
+r4_loopback0_pool: 6.0.0.0/8
+r4_loopback0_prefix_lens:
+- 24
+r5_loopback0_pool: 4.0.0.0/8
+r5_loopback0_prefix_lens:
+- 24
+r6_loopback0_pool: 2.0.0.0/8
+r6_loopback0_prefix_lens:
+- 24

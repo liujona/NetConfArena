@@ -1,0 +1,148 @@
+{
+    "params": {
+        "router1_name":                {"type": "choice",        "options": "r1_names"},
+        "router2_name":                {"type": "choice",        "options": "r2_names", "different_from": ["router1_name"]},
+        "_loopback1":                  {"type": "random_subnet", "pool": "r1_loopback_pool", "prefix_len": "r1_loopback_prefix_lens"},
+        "router1_loopback_ip":         {"type": "subnet_attr", "subnet": "_loopback1", "attr": "host",     "index": 1},
+        "router1_loopback_mask":       {"type": "subnet_attr", "subnet": "_loopback1", "attr": "netmask"},
+        "router1_loopback_prefix_len": {"type": "subnet_attr", "subnet": "_loopback1", "attr": "prefixlen"},
+        "router1_loopback_network":    {"type": "subnet_attr", "subnet": "_loopback1", "attr": "network"},
+        "_loopback2":                  {"type": "random_subnet", "pool": "r2_loopback_pool", "prefix_len": "r2_loopback_prefix_lens"},
+        "router2_loopback_ip":         {"type": "subnet_attr", "subnet": "_loopback2", "attr": "host",     "index": 1},
+        "router2_loopback_mask":       {"type": "subnet_attr", "subnet": "_loopback2", "attr": "netmask"},
+        "router2_loopback_network":    {"type": "subnet_attr", "subnet": "_loopback2", "attr": "network"},
+        "router2_loopback_prefix_len": {"type": "subnet_attr", "subnet": "_loopback2", "attr": "prefixlen"},
+        "_link1":                      {"type": "random_subnet", "pool": "link1_pool", "prefix_len": "link1_prefix_lens"},
+        "link1_network":               {"type": "subnet_attr", "subnet": "_link1", "attr": "network"},
+        "link1_mask":                  {"type": "subnet_attr", "subnet": "_link1", "attr": "netmask"},
+        "link1_prefix_len":            {"type": "subnet_attr", "subnet": "_link1", "attr": "prefixlen"},
+        "link1_ip1":                   {"type": "subnet_attr", "subnet": "_link1", "attr": "host", "index": 1},
+        "link1_ip2":                   {"type": "subnet_attr", "subnet": "_link1", "attr": "host", "index": 2},
+        "_link2":                      {"type": "random_subnet", "pool": "link2_pool", "prefix_len": "link2_prefix_lens", "no_overlap": ["_link1"]},
+        "link2_network":               {"type": "subnet_attr", "subnet": "_link2", "attr": "network"},
+        "link2_mask":                  {"type": "subnet_attr", "subnet": "_link2", "attr": "netmask"},
+        "link2_prefix_len":            {"type": "subnet_attr", "subnet": "_link2", "attr": "prefixlen"},
+        "link2_ip1":                   {"type": "subnet_attr", "subnet": "_link2", "attr": "host", "index": 1},
+        "link2_ip2":                   {"type": "subnet_attr", "subnet": "_link2", "attr": "host", "index": 2},
+        "link1_media":                 {"type": "choice", "options": "link1_media_options"},
+        "link2_media":                 {"type": "choice", "options": "link2_media_options"},
+        "backup_distance":             {"type": "choice", "options": "backup_distances"}
+    },
+    "scenario": "Static Routing",
+    "goals": "• {{router1_name}}: create a static route pointing to the Loopback0 network on {{router2_name}}, traffic should pass the {{link1_network}} network.\n• {{router2_name}}: create a default route pointing to the Loopback0 network on {{router1_name}}, traffic should pass the {{link2_network}} network. In the routing table you should see a 0.0.0.0 entry.\n• {{router1_name}}: create a backup static route pointing to the Loopback0 network on {{router2_name}}, administrative distance should be {{backup_distance}}.\n• {{router2_name}}: add a backup default route via the {{link1_network}} network with administrative distance {{backup_distance}}, so traffic switches to it if the primary default route fails.",
+    "topology_model": {
+        "nodes": ["r1", "r2"],
+        "links": [
+            {"id": "link1", "nodes": ["r1", "r2"], "media": "{{link1_media}}"},
+            {"id": "link2", "nodes": ["r1", "r2"], "media": "{{link2_media}}"}
+        ]
+    },
+    "topology_attributes": {
+        "nodes": {
+            "r1": {
+                "type": "SONiC-VS",
+                "label": {"text": "{{router1_name}}", "x": -1.40202025347, "y": -34.4365081386},
+                "x": -692.0,
+                "y": -89.0
+            },
+            "r2": {
+                "type": "SONiC-VS",
+                "label": {"text": "{{router2_name}}", "x": -17.7792206139, "y": -28.0517318277},
+                "x": -313.0,
+                "y": -85.0
+            }
+        },
+        "notes": [
+            {"text": "{{link1_network}}/{{link1_prefix_len}}", "x": -525.0, "y": -113.0},
+            {"text": "{{link2_network}}/{{link2_prefix_len}}", "x": -526.0, "y": -40.0}
+        ]
+    },
+    "startup_configs": {
+        "{{router1_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router1_loopback_ip}}/{{router1_loopback_prefix_len}}",
+            "config interface ip add {{router1_link1_iface}} {{link1_ip1}}/{{link1_prefix_len}}",
+            "config interface startup {{router1_link1_iface}}",
+            "config interface ip add {{router1_link2_iface}} {{link2_ip1}}/{{link2_prefix_len}}",
+            "config interface startup {{router1_link2_iface}}"
+        ],
+        "{{router2_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router2_loopback_ip}}/{{router2_loopback_prefix_len}}",
+            "config interface ip add {{router2_link1_iface}} {{link1_ip2}}/{{link1_prefix_len}}",
+            "config interface startup {{router2_link1_iface}}",
+            "config interface ip add {{router2_link2_iface}} {{link2_ip2}}/{{link2_prefix_len}}",
+            "config interface startup {{router2_link2_iface}}"
+        ]
+    },
+    "groundtruth_configs": {
+        "{{router1_name}}": [
+            "ip route {{router2_loopback_network}}/{{router2_loopback_prefix_len}} {{link1_ip2}}",
+            "ip route {{router2_loopback_network}}/{{router2_loopback_prefix_len}} {{link2_ip2}} {{backup_distance}}"
+        ],
+        "{{router2_name}}": [
+            "ip route 0.0.0.0/0 {{link2_ip1}}",
+            "ip route 0.0.0.0/0 {{link1_ip1}} {{backup_distance}}"
+        ]
+    },
+    "testcases": [
+        {
+            "goal": "{{router1_name}}: create a static route pointing to the Loopback0 network on {{router2_name}}, traffic should pass the {{link1_network}} network.",
+            "testcase": [
+                {
+                    "id": "1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip route {{router2_loopback_network}}/{{router2_loopback_prefix_len}}\"",
+                    "expected_result": {
+                        "protocol": "static",
+                        "nexthop_ip": "{{link1_ip2}}"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "{{router2_name}}: create a default route pointing to the Loopback0 network on {{router1_name}}, traffic should pass the {{link2_network}} network. In the routing table you should see a 0.0.0.0 entry.",
+            "testcase": [
+                {
+                    "id": "2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip route 0.0.0.0/0\"",
+                    "expected_result": {
+                        "protocol": "static",
+                        "nexthop_ip": "{{link2_ip1}}"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "{{router1_name}}: create a backup static route pointing to the Loopback0 network on {{router2_name}}, administrative distance should be {{backup_distance}}.",
+            "testcase": [
+                {
+                    "id": "3",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show running-config\"",
+                    "expected_result": {
+                        "destination": "{{router2_loopback_network}}/{{router2_loopback_prefix_len}}",
+                        "nexthop_ip": "{{link2_ip2}}",
+                        "distance": {"op": "==", "value": "{{backup_distance}}"}
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "{{router2_name}}: add a backup default route via the {{link1_network}} network with administrative distance {{backup_distance}}, so traffic switches to it if the primary default route fails.",
+            "testcase": [
+                {
+                    "id": "4",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show running-config\"",
+                    "expected_result": {
+                        "destination": "0.0.0.0/0",
+                        "nexthop_ip": "{{link1_ip1}}",
+                        "distance": {"op": "==", "value": "{{backup_distance}}"}
+                    }
+                }
+            ]
+        }
+    ]
+}

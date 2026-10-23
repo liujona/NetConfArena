@@ -1,0 +1,466 @@
+{
+    "params": {
+        "router1_name": {
+            "type": "choice",
+            "options": "r1_names"
+        },
+        "router2_name": {
+            "type": "choice",
+            "options": "r2_names"
+        },
+        "router3_name": {
+            "type": "choice",
+            "options": "r3_names"
+        },
+        "router2_ospf_router_id": {
+            "type": "choice",
+            "options": "ospf_router_ids",
+            "default": "22.22.22.22"
+        },
+        "_link1": {
+            "type": "random_subnet",
+            "pool": "link1_pool",
+            "prefix_len": "link1_prefix_lens",
+            "default": "192.168.12.0/24"
+        },
+        "link1_network": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "network"
+        },
+        "link1_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "prefixlen"
+        },
+        "link1_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 1
+        },
+        "link1_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link1",
+            "attr": "host",
+            "index": 2
+        },
+        "link1_media": {
+            "type": "choice",
+            "options": "link1_media_options"
+        },
+        "_link2": {
+            "type": "random_subnet",
+            "pool": "link2_pool",
+            "prefix_len": "link2_prefix_lens",
+            "no_overlap": [
+                "_link1"
+            ],
+            "default": "192.168.13.0/24"
+        },
+        "link2_network": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "network"
+        },
+        "link2_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "prefixlen"
+        },
+        "link2_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "host",
+            "index": 1
+        },
+        "link2_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link2",
+            "attr": "host",
+            "index": 2
+        },
+        "link2_media": {
+            "type": "choice",
+            "options": "link2_media_options"
+        },
+        "_link3": {
+            "type": "random_subnet",
+            "pool": "link3_pool",
+            "prefix_len": "link3_prefix_lens",
+            "no_overlap": [
+                "_link1",
+                "_link2"
+            ],
+            "default": "192.168.23.0/24"
+        },
+        "link3_network": {
+            "type": "subnet_attr",
+            "subnet": "_link3",
+            "attr": "network"
+        },
+        "link3_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_link3",
+            "attr": "prefixlen"
+        },
+        "link3_ip1": {
+            "type": "subnet_attr",
+            "subnet": "_link3",
+            "attr": "host",
+            "index": 1
+        },
+        "link3_ip2": {
+            "type": "subnet_attr",
+            "subnet": "_link3",
+            "attr": "host",
+            "index": 2
+        },
+        "link3_media": {
+            "type": "choice",
+            "options": "link3_media_options"
+        },
+        "_loopback1": {
+            "type": "random_subnet",
+            "pool": "r1_loopback_pool",
+            "prefix_len": 24,
+            "default": "1.1.1.0/24"
+        },
+        "router1_loopback_ip": {
+            "type": "subnet_attr",
+            "subnet": "_loopback1",
+            "attr": "host",
+            "index": 1
+        },
+        "router1_loopback_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_loopback1",
+            "attr": "prefixlen"
+        },
+        "router1_loopback_network": {
+            "type": "subnet_attr",
+            "subnet": "_loopback1",
+            "attr": "network"
+        },
+        "_loopback2": {
+            "type": "random_subnet",
+            "pool": "r2_loopback_pool",
+            "prefix_len": 24,
+            "default": "2.2.2.0/24"
+        },
+        "router2_loopback_ip": {
+            "type": "subnet_attr",
+            "subnet": "_loopback2",
+            "attr": "host",
+            "index": 1
+        },
+        "router2_loopback_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_loopback2",
+            "attr": "prefixlen"
+        },
+        "router2_loopback_network": {
+            "type": "subnet_attr",
+            "subnet": "_loopback2",
+            "attr": "network"
+        },
+        "_loopback3": {
+            "type": "random_subnet",
+            "pool": "r3_loopback_pool",
+            "prefix_len": 24,
+            "default": "3.3.3.0/24"
+        },
+        "router3_loopback_ip": {
+            "type": "subnet_attr",
+            "subnet": "_loopback3",
+            "attr": "host",
+            "index": 1
+        },
+        "router3_loopback_prefix_len": {
+            "type": "subnet_attr",
+            "subnet": "_loopback3",
+            "attr": "prefixlen"
+        },
+        "router3_loopback_network": {
+            "type": "subnet_attr",
+            "subnet": "_loopback3",
+            "attr": "network"
+        }
+    },
+    "scenario": "OSPF Single Area",
+    "goals": "• {{router1_name}}: Configure OSPF and advertise all networks in area 0 by using a single network statement.\n• {{router2_name}}: Configure OSPF and advertise all networks in area 0 by using 2 network statements.\n• {{router3_name}}: Configure OSPF and advertise all networks in area 0 by using 3 network statements.\n• {{router2_name}}: change the router-id to {{router2_ospf_router_id}}, make sure you see this change from {{router3_name}} by using show commands.\n• Traffic from {{router3_name}} to {{router1_name}} should use the link between {{router2_name}}-{{router3_name}}, use the cost command to achieve this.\n• The {{router1_name}} router will have access to the Internet in the future, you need to advertise a default route in OSPF so {{router2_name}} and {{router3_name}} will send traffic for unknown networks to {{router1_name}}.",
+    "startup_configs": {
+        "{{router1_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router1_loopback_ip}}/{{router1_loopback_prefix_len}}",
+            "config interface ip add {{router1_link1_iface}} {{link1_ip1}}/{{link1_prefix_len}}",
+            "config interface startup {{router1_link1_iface}}",
+            "config interface ip add {{router1_link2_iface}} {{link2_ip1}}/{{link2_prefix_len}}",
+            "config interface startup {{router1_link2_iface}}",
+            "ip route 0.0.0.0/0 blackhole"
+        ],
+        "{{router2_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router2_loopback_ip}}/{{router2_loopback_prefix_len}}",
+            "config interface ip add {{router2_link1_iface}} {{link1_ip2}}/{{link1_prefix_len}}",
+            "config interface startup {{router2_link1_iface}}",
+            "config interface ip add {{router2_link3_iface}} {{link3_ip1}}/{{link3_prefix_len}}",
+            "config interface startup {{router2_link3_iface}}"
+        ],
+        "{{router3_name}}": [
+            "config interface ip remove Loopback0 10.1.0.1/32",
+            "config interface ip add Loopback0 {{router3_loopback_ip}}/{{router3_loopback_prefix_len}}",
+            "config interface ip add {{router3_link2_iface}} {{link2_ip2}}/{{link2_prefix_len}}",
+            "config interface startup {{router3_link2_iface}}",
+            "config interface ip add {{router3_link3_iface}} {{link3_ip2}}/{{link3_prefix_len}}",
+            "config interface startup {{router3_link3_iface}}"
+        ]
+    },
+    "groundtruth_configs": {
+        "{{router1_name}}": [
+            "router ospf",
+            "log-adjacency-changes",
+            "network 0.0.0.0/0 area 0",
+            "default-information originate"
+        ],
+        "{{router2_name}}": [
+            "router ospf",
+            "ospf router-id {{router2_ospf_router_id}}",
+            "log-adjacency-changes",
+            "network {{router2_loopback_network}}/{{router2_loopback_prefix_len}} area 0",
+            "network 192.168.0.0/16 area 0"
+        ],
+        "{{router3_name}}": [
+            "interface {{router3_link2_iface}}",
+            "ip ospf cost 100",
+            "exit",
+            "router ospf",
+            "log-adjacency-changes",
+            "network {{router3_loopback_network}}/{{router3_loopback_prefix_len}} area 0",
+            "network {{link2_network}}/{{link2_prefix_len}} area 0",
+            "network {{link3_network}}/{{link3_prefix_len}} area 0"
+        ]
+    },
+    "testcases": [
+        {
+            "goal": "{{router1_name}}: Configure OSPF and advertise all networks in area 0 by using a single network statement.",
+            "testcase": [
+                {
+                    "id": "1",
+                    "node": "{{router1_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": [
+                        {
+                            "interface": "Loopback0",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router1_link1_iface}}",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router1_link2_iface}}",
+                            "area": "0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "goal": "{{router2_name}}: Configure OSPF and advertise all networks in area 0 by using 2 network statements.",
+            "testcase": [
+                {
+                    "id": "2",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": [
+                        {
+                            "interface": "Loopback0",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router2_link1_iface}}",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router2_link3_iface}}",
+                            "area": "0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "goal": "{{router3_name}}: Configure OSPF and advertise all networks in area 0 by using 3 network statements.",
+            "testcase": [
+                {
+                    "id": "3",
+                    "node": "{{router3_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": [
+                        {
+                            "interface": "Loopback0",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router3_link2_iface}}",
+                            "area": "0"
+                        },
+                        {
+                            "interface": "{{router3_link3_iface}}",
+                            "area": "0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "goal": "{{router2_name}}: change the router-id to {{router2_ospf_router_id}}, make sure you see this change from {{router3_name}} by using show commands.",
+            "testcase": [
+                {
+                    "id": "4",
+                    "node": "{{router3_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf neighbor json\"",
+                    "expected_result": {
+                        "neighbor_id": "{{router2_ospf_router_id}}",
+                        "ip_address": "{{link3_ip1}}",
+                        "interface": "{{router3_link3_iface}}"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "Traffic from {{router3_name}} to {{router1_name}} should use the link between {{router2_name}}-{{router3_name}}, use the cost command to achieve this.",
+            "testcase": [
+                {
+                    "id": "5-1",
+                    "node": "{{router3_name}}",
+                    "command": "sudo vtysh -c \"show ip ospf interface json\"",
+                    "expected_result": {
+                        "interface": "{{router3_link2_iface}}",
+                        "cost": {
+                            "op": ">=",
+                            "value": 2
+                        }
+                    }
+                },
+                {
+                    "id": "5-2",
+                    "node": "{{router3_name}}",
+                    "command": "sudo vtysh -c \"show ip route {{router1_loopback_ip}}\"",
+                    "expected_result": {
+                        "nexthop_ip": "{{link3_ip1}}",
+                        "nexthop_if": "{{router3_link3_iface}}"
+                    }
+                }
+            ]
+        },
+        {
+            "goal": "The {{router1_name}} router will have access to the Internet in the future, you need to advertise a default route in OSPF so {{router2_name}} and {{router3_name}} will send traffic for unknown networks to {{router1_name}}.",
+            "testcase": [
+                {
+                    "id": "6-1",
+                    "node": "{{router2_name}}",
+                    "command": "sudo vtysh -c \"show ip route 0.0.0.0/0\"",
+                    "expected_result": {
+                        "nexthop_ip": "{{link1_ip1}}",
+                        "nexthop_if": "{{router2_link1_iface}}"
+                    }
+                },
+                {
+                    "id": "6-2",
+                    "node": "{{router3_name}}",
+                    "command": "sudo vtysh -c \"show ip route 0.0.0.0/0\"",
+                    "expected_result": {
+                        "nexthop_ip": "{{link3_ip1}}",
+                        "nexthop_if": "{{router3_link3_iface}}"
+                    }
+                }
+            ]
+        }
+    ],
+    "topology_model": {
+        "nodes": [
+            "r1",
+            "r2",
+            "r3"
+        ],
+        "links": [
+            {
+                "id": "link1",
+                "nodes": [
+                    "r1",
+                    "r2"
+                ],
+                "media": "{{link1_media}}"
+            },
+            {
+                "id": "link2",
+                "nodes": [
+                    "r1",
+                    "r3"
+                ],
+                "media": "{{link2_media}}"
+            },
+            {
+                "id": "link3",
+                "nodes": [
+                    "r2",
+                    "r3"
+                ],
+                "media": "{{link3_media}}"
+            }
+        ]
+    },
+    "topology_attributes": {
+        "nodes": {
+            "r1": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router1_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": -121.0,
+                "y": -177.0
+            },
+            "r2": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router2_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": -262.0,
+                "y": 44.0
+            },
+            "r3": {
+                "type": "SONiC-VS",
+                "label": {
+                    "text": "{{router3_name}}",
+                    "x": 19.5,
+                    "y": -25.0
+                },
+                "x": 23.0,
+                "y": 43.0
+            }
+        },
+        "notes": [
+            {
+                "text": "{{link1_network}}/{{link1_prefix_len}}",
+                "x": -279.0,
+                "y": -62.0
+            },
+            {
+                "text": "{{link2_network}}/{{link2_prefix_len}}",
+                "x": -12.0,
+                "y": -63.0
+            },
+            {
+                "text": "{{link3_network}}/{{link3_prefix_len}}",
+                "x": -144.0,
+                "y": 70.0
+            }
+        ]
+    }
+}

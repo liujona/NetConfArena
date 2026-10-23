@@ -1,0 +1,13 @@
+r1_names: [King, Crown, Duke, Baron, Earl]
+r2_names: [Kong, Queen, Prince, Knight, Bishop]
+
+r1_lo0_pool: "1.0.0.0/8"
+r2_lo0_pool: "2.0.0.0/8"
+
+link1_pool: "192.168.0.0/16"
+link1_prefix_lens: [24]
+link2_pool: "192.168.0.0/16"
+link2_prefix_lens: [24]
+
+link1_media_options: [fastethernet]
+link2_media_options: [serial]
