@@ -24,3 +24,4 @@ pipeline_work/
 .vscode/
 .idea/
 .DS_Store
+results_sonic/

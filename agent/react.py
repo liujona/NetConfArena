@@ -16,7 +16,11 @@ class ReActAgent(BaseAgent):
         super().__init__(agent_name)
         self.output_parser = ReActDiag()
         mode = self.name.split("___")[0]
-        self.load_config(os.path.join(CONFIG_DIR, f"{mode}.yaml"))
+        # self.load_config(os.path.join(CONFIG_DIR, f"{mode}.yaml"))
+        from environment.device_profile import IS_SONIC
+        cfg_name = f"{mode}_SONiC.yaml" if IS_SONIC else f"{mode}.yaml"
+        self.load_config(os.path.join(CONFIG_DIR, cfg_name))
+        
         self.max_action_turns = int(
             self.agent_config.get("agent", {}).get(
                 "max_action_turns",
@@ -187,7 +191,7 @@ class ReActAgent(BaseAgent):
             result = method(*args)
             return result
         else:
-            raise AttributeError(f"Method {func_name} not found in {type(self.task_env)}")
+            raise AttributeError(f"Method {func_name} not found in {type(task_env).__name__}")
 
 class ReActDiag():
     def parse(self, output) -> dict:

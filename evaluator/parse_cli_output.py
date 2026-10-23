@@ -4,6 +4,9 @@ import json
 from anytree import Node
 from ntc_templates.parse import parse_output
 
+from environment.device_profile import IS_SONIC
+from .parse_sonic import parse_sonic_cli_output
+
 def build_anytree_from_indent(text, indent_size=1):
     lines = [line.rstrip() for line in text.strip().splitlines()]
     root = Node("ROOT")  # Root node.
@@ -1481,6 +1484,10 @@ def parse_ip_bgp_vpnv4(output):
 
 
 def parse_cli_output(command, output):
+
+    if IS_SONIC:
+        return parse_sonic_cli_output(command, output)
+    
     if command == "show running-config | section ip route":
         return parse_config_ip_route(output)
     # Any `show ... | include <pattern>` is asserted line by line. Lines are

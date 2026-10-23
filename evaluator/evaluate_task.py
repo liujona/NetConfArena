@@ -5,6 +5,8 @@ from .utils import generate_configs_diff, compute_precision_and_recall, resolve_
 from environment.telnet_node import run_parallel
 from logs.mylogger import logger
 
+from environment.device_profile import ROUTE_SNAPSHOT_CMDS
+
 class Evaluator:
     def __init__(self):
         self.task_evaluation_result = {}
@@ -46,10 +48,9 @@ class Evaluator:
         # Looking only at the global table would declare convergence too soon.
         def worker(node_name):
             routes = []
-            for command in ("show ip route", "show ip route vrf *"):
+            for command in ROUTE_SNAPSHOT_CMDS:
                 output = self.evaluator_interface.execute_command(node_name, command)
-                # Nodes without VRFs return "% ... does not exist", parsed as [].
-                routes.extend(parse_cli_output("show ip route", output))
+                routes.extend(parse_cli_output(command, output))
             for route in routes:
                 route.pop("uptime", None)
             return routes

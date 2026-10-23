@@ -8,11 +8,14 @@ from .telnet_node import connect_to_all_nodes, connect_to_node, send_command, ru
 from .utils import remove_redundant_prompt, clean_configuration, remove_banner_sections, clean_command_output
 from logs.mylogger import logger
 
+import re
+from .device_profile import IS_SONIC, INIT_COMMANDS, RUNNING_CONFIG_CMD, sonic_wrap, sonic_wrap_batch
+
 class TaskEnvironment:
     def __init__(self, task_data):
         # Open the corresponding GNS3 project in the emulator.
         self.task_data = task_data
-        self.project_name = self.task_data["scenario"]
+        self.project_name = (f"SONiC-{self.task_data['scenario']}" if IS_SONIC else self.task_data["scenario"])
         self.last_update_time = time.time()
         self.node_current_configs = {}
         self.tns = {}
@@ -27,32 +30,62 @@ class TaskEnvironment:
         # Open the GNS3 project.
         delete_project(self.project_name)
         self.project = create_new_project(self.project_name)
-        
-        create_topology(self.project, self.task_data["topology"])
-        
-        self.project.start_nodes()
-        self.tns = connect_to_all_nodes(self.project)
 
-        self.apply_config(self.task_data['startup_configs'])
-        self.evaluator_interface.node_startup_configs = self.evaluator_interface.get_all_node_current_configs()
+        try:
+            create_topology(self.project, self.task_data["topology"])
+            self.project.start_nodes()
+            self.tns = connect_to_all_nodes(self.project)
+
+            if IS_SONIC:
+                self.wait_for_sonic_ready()
+
+            self.apply_config(self.task_data['startup_configs'], strict=True)
+            self.evaluator_interface.node_startup_configs = self.evaluator_interface.get_all_node_current_configs()
+        except BaseException:
+            self.close()      # stop nodes and close the project even on failure
+            raise
 
         logger.info(f"Task environment for task {self.task_data['scenario']} has been deployed successfully.")
 
-    def apply_config(self, configs):
+    def apply_config(self, configs, strict=False):
         def worker(node_name):
             self.node_current_configs.pop(node_name, None)
             if self._health_check_node(node_name) is None:
                 return
             cmds = list(configs[node_name])
-            if not cmds or cmds[0] != "configure terminal":
-                cmds.insert(0, "configure terminal")
-            if cmds[-1] != "end":
-                cmds.append("end")
-            self.send_command_to_node(node_name, "enable")
-            for cmd in cmds:
-                self.send_command_to_node(node_name, cmd)
+            if IS_SONIC:
+                cmds = sonic_wrap_batch(cmds)
+            else:
+                if not cmds or cmds[0] != "configure terminal":
+                    cmds.insert(0, "configure terminal")
+                if cmds[-1] != "end":
+                    cmds.append("end")
+                self.send_command_to_node(node_name, "enable")
 
-        # Each node is independent — apply every node's config in parallel.
+            for line in cmds:
+                out = self.send_command_to_node(node_name, line) or ""
+                if not IS_SONIC:
+                    continue
+
+                # FRR can refuse commands for a few seconds after boot. Retry those.
+                for _ in range(3):
+                    if "failed to connect" not in out:
+                        break
+                    time.sleep(5)
+                    out = self.send_command_to_node(node_name, line) or ""
+
+                if not re.search(r'Error|failed|Exiting|Usage:|^%', out, re.M):
+                    continue
+                # Removing an address that is already gone is not a failure.
+                if re.search(r'does not exist|not found|No such', out, re.IGNORECASE):
+                    continue
+
+                msg = f"{node_name}: `{line}` -> {out.strip()[-200:]}"
+                if strict:
+                    raise RuntimeError(msg)
+                logger.warning(msg)
+
+        # run_parallel re-raises the first worker error after all nodes finish.
         run_parallel(list(configs.keys()), worker)
 
     def get_all_node_current_configs(self):
@@ -82,12 +115,25 @@ class TaskEnvironment:
         # must contain a hostname line and a final end marker; retry otherwise.
         cleaned = ""
         for attempt in range(max_attempts):
+
             if attempt > 0:
                 time.sleep(settle_delay)
-            self.send_command_to_node(node_name, "enable")
-            raw = self.send_command_to_node(node_name, "show running-config")
+
+            if not IS_SONIC:
+                self.send_command_to_node(node_name, "enable")
+            raw = self.send_command_to_node(node_name, RUNNING_CONFIG_CMD)
             raw = remove_redundant_prompt(raw)
             cleaned = clean_configuration(remove_banner_sections(raw))
+            if IS_SONIC:
+                complete = bool(cleaned.strip())
+            else:
+                lines = cleaned.split("\n")
+                complete = (any(l.strip() == "end" for l in lines)
+                            and any(l.startswith("hostname ") for l in lines))
+            if complete:
+                return cleaned
+
+
             lines = cleaned.split("\n")
             has_end = any(l.strip() == "end" for l in lines)
             has_hostname = any(l.startswith("hostname ") for l in lines)
@@ -156,7 +202,8 @@ class TaskEnvironment:
                 tn = connect_to_node(node.console_host, node.console, timeout=10, retry_delay=retry_delay, cli_timeout=30)
                 if tn is not None:
                     self.tns[node_name] = tn
-                    for command in ("enable", "terminal length 0", "terminal width 0", "conf t", "no ip domain lookup", "no logging console", "end"):
+                    # for command in ("enable", "terminal length 0", "terminal width 0", "conf t", "no ip domain lookup", "no logging console", "end"):
+                    for command in INIT_COMMANDS:
                         if send_command(command, tn) is None:
                             logger.debug(f"Initialization command failed after reconnecting to {node_name}: {command}")
                             tn.close()
@@ -208,3 +255,23 @@ class TaskEnvironment:
             self.project.close()
         except Exception as e:
             logger.warning(f"Failed to close project during teardown: {e}")
+
+
+    def wait_for_sonic_ready(self, timeout=900):
+        from .device_profile import SONIC_READY_CMD, SONIC_REQUIRED_CONTAINERS
+        deadline = time.time() + timeout
+        for node_name in list(self.tns.keys()):
+            while True:
+                out = self.send_command_to_node(node_name, SONIC_READY_CMD) or ""
+                up = {line.split()[0] for line in out.splitlines() if " Up " in line}
+                frr = self.send_command_to_node(node_name, 'sudo vtysh -c "show version"') or ""
+                if set(SONIC_REQUIRED_CONTAINERS) <= up and "FRRouting" in frr:
+                    logger.info(f"{node_name}: SONiC containers and FRR are up")
+                    self.send_command_to_node(node_name, "sudo docker exec bgp /usr/lib/frr/ospfd -d -F traditional -A 127.0.0.1")
+                    break
+                if time.time() > deadline:
+                    raise RuntimeError(
+                        f"{node_name}: SONiC not ready after {timeout}s "
+                        f"(containers up: {sorted(up)}, FRR seen: {'FRRouting' in frr})"
+                    )
+                time.sleep(10)

@@ -6,6 +6,7 @@ import socket
 import select
 from concurrent.futures import ThreadPoolExecutor
 from logs.mylogger import logger
+from .device_profile import PROMPT_RE, LOGIN_USER, LOGIN_PASSWORD, INIT_COMMANDS, CLI_TIMEOUT
 
 
 def run_parallel(items, worker, max_workers=None):
@@ -104,15 +105,16 @@ class TelnetClient:
         except Exception:
             pass
 
-_INIT_COMMANDS = (
-    "enable",
-    "terminal length 0",
-    "terminal width 0",
-    "conf t",
-    "no ip domain lookup",
-    "no logging console",
-    "end",
-)
+# These were for SONiC specific 
+# _INIT_COMMANDS = (
+#     "enable",
+#     "terminal length 0",
+#     "terminal width 0",
+#     "conf t",
+#     "no ip domain lookup",
+#     "no logging console",
+#     "end",
+# )
 
 
 def connect_to_all_nodes(project):
@@ -144,42 +146,49 @@ def connect_to_all_nodes(project):
             logger.warning(f"Failed to connect to {node_name} after {max_retries} attempts")
             return None
 
-        for command in _INIT_COMMANDS:
+        for command in INIT_COMMANDS:
             send_command(command, tn)
         return tn
 
     results = run_parallel(list(node_map), worker)
     return {name: tn for name, tn in results.items() if tn is not None}
 
-def connect_to_node(host, port, timeout=10, retry_delay=5, cli_timeout=120):
-    command_prompts = r'^[A-Za-z0-9_\-]+(?:\([A-Za-z0-9_\-]+\))?[>#]\s?$'
+def connect_to_node(host, port, timeout=10, retry_delay=5, cli_timeout=CLI_TIMEOUT):
     try:
-        # Create the Telnet connection.
         tn = TelnetClient(host, port, timeout)
         logger.debug(f"Connecting to {host}:{port}...")
 
-        # Retry until the device CLI becomes available.
         CLI_entered = False
         start_time = time.time()
         output = ""
+        login_sent = 0
 
         while not CLI_entered:
-            # Enforce the connection timeout.
             if time.time() - start_time > cli_timeout:
                 raise TimeoutError("Timed out waiting for the CLI prompt")
 
-            # Read currently available data.
             chunk = tn.read_very_eager().decode('ascii', errors='ignore')
             if chunk:
                 output += chunk
 
-            # Check for a matching prompt.
-            match = re.search(command_prompts, output, flags=re.MULTILINE)
-            if match:
+            # SONiC consoles ask for credentials. Answer at most twice in total
+            # so a wrong password cannot lock the account.
+            if LOGIN_USER is not None and login_sent < 2:
+                if re.search(r'login:\s*$', output):
+                    tn.write(LOGIN_USER.encode() + b"\r")
+                    output, login_sent = "", login_sent + 1
+                    time.sleep(retry_delay)
+                    continue
+                if re.search(r'Password:\s*$', output):
+                    tn.write(LOGIN_PASSWORD.encode() + b"\r")
+                    output, login_sent = "", login_sent + 1
+                    time.sleep(retry_delay)
+                    continue
+
+            if re.search(PROMPT_RE, output, flags=re.MULTILINE):
                 logger.debug("Successfully entered CLI!")
                 CLI_entered = True
             else:
-                # No match yet; send Enter and wait.
                 tn.write(b"\r")
                 time.sleep(retry_delay)
 
@@ -189,8 +198,14 @@ def connect_to_node(host, port, timeout=10, retry_delay=5, cli_timeout=120):
         logger.debug(f"Failed to connect to {host}:{port}: {e}")
         return None
 
+    except Exception as e:
+        logger.debug(f"Failed to connect to {host}:{port}: {e}")
+        return None
+
 def send_command(command, tn, timeout=60):
-    command_prompts = r'^[A-Za-z0-9_\-]+(?:\([A-Za-z0-9_\-]+\))?[>#]\s?$'
+    # command_prompts = r'^[A-Za-z0-9_\-]+(?:\([A-Za-z0-9_\-]+\))?[>#]\s?$'
+
+    command_prompts = PROMPT_RE
 
     # Phase 1: drain any leftover output from prior commands.
     # A single empty read is insufficient because read_very_eager is

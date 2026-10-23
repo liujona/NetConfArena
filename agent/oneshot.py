@@ -13,7 +13,10 @@ class OneShotAgent(BaseAgent):
     def __init__(self, agent_name):
         super().__init__(agent_name)
         self.output_parser = OneShotDiag()
-        self.load_config(os.path.join(CONFIG_DIR, "OneShot.yaml"))
+        # self.load_config(os.path.join(CONFIG_DIR, "OneShot.yaml"))
+
+        from environment.device_profile import IS_SONIC
+        self.load_config(os.path.join(CONFIG_DIR, "OneShot_SONiC.yaml" if IS_SONIC else "OneShot.yaml"))
 
     def execute_task(self, task_index, interface, task_data):
         current_config = json.dumps(

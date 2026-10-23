@@ -37,6 +37,10 @@ if __name__ == "__main__":
                         help="Task-instantiation seed. The same seed yields the same task "
                              "instance (device names, interfaces, IP addressing). Omit for a "
                              "random, non-reproducible instance.")
+
+    parser.add_argument('--task_file', type=str, default=None,
+                        help="Path to a task JSON, e.g. sonic-test/01.Static Routing/01.Static Routing.json")
+    
     args = parser.parse_args()
 
     mode = args.mode
@@ -46,16 +50,32 @@ if __name__ == "__main__":
     trial = int(args.trial)
     seed = args.seed
 
+    # results_root = "results_sonic" if os.environ.get("NETCONF_PLATFORM", "").lower() == "sonic" else "results"
+    # data_dir = f"{results_root}/{int(args.task_index):02d}.{scenario}/{llm_model.split('/')[-1]}/{mode}"
+
     if no_thinking:
         llm_model = llm_model + '_no_thinking'
     agent_name = mode + '___' + llm_model
 
     # Instantiate the task template: sample parameters and render placeholders.
-    task_data = render_task(task_index, randomize=True, seed=seed)
+    # task_data = render_task(task_index, randomize=True, seed=seed)
+
+    if args.task_file:
+        from task.task_loader import render_task_file
+        task_data = render_task_file(args.task_file, randomize=True, seed=seed)
+    else:
+        task_data = render_task(task_index, randomize=True, seed=seed)
+    
     scenario = task_data['scenario']
 
     # Build the output directory (the task index is padded to two digits).
-    data_dir = f"results/{int(args.task_index):02d}.{scenario}/{llm_model.split('/')[-1]}/{mode}"
+    # data_dir = f"results/{int(args.task_index):02d}.{scenario}/{llm_model.split('/')[-1]}/{mode}"
+    # os.makedirs(data_dir, exist_ok=True)
+
+    scenario = task_data['scenario']
+
+    results_root = "results_sonic" if os.environ.get("NETCONF_PLATFORM", "").lower() == "sonic" else "results"
+    data_dir = f"{results_root}/{int(args.task_index):02d}.{scenario}/{llm_model.split('/')[-1]}/{mode}"
     os.makedirs(data_dir, exist_ok=True)
 
     seed_tag = "random" if seed is None else str(seed)

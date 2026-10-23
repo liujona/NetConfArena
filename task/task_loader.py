@@ -12,6 +12,45 @@ ALL_TASKS_PATH = os.path.join(TASK_DIR, "all_tasks.json")
 CAPABILITIES_PATH = os.path.join(TASK_DIR, "router_capabilities.yaml")
 
 
+SONIC_NODE_TYPE = "SONiC-VS"
+SONIC_MGMT_ADAPTER = 0      # eth0, management; never used for links
+SONIC_ADAPTER_COUNT = 8     # the SONiC-VS template has 8 NICs
+
+def _sonic_interface(adapter):
+    """Adapter N (N>=1) -> EthernetX, X = (N-1)*4. Verified on the node:
+    eth1->Ethernet0 and eth2->Ethernet4 are consistent with the output."""
+    return f"Ethernet{(int(adapter) - 1) * 4}"
+
+
+
+def derive_sonic_plan(topology_model, params, topology_attributes):
+    """Physical plan for topologies where every node is SONiC-VS.
+    Each link takes the next free NIC adapter (1..7) on each endpoint.
+    Writes {prefix}_{link}_iface and {prefix}_{link}_port_num into params."""
+    nodes, used = {}, {}
+    for model_node in topology_model.get("nodes", []):
+        nid = str(model_node["id"] if isinstance(model_node, dict) else model_node)
+        if _node_type(topology_attributes, nid) != SONIC_NODE_TYPE:
+            raise ValueError(f"mixed topologies are not supported yet: {nid} is not {SONIC_NODE_TYPE}")
+        nodes[nid] = {"kind": "sonic", "slots": {}, "links": {}}
+        used[nid] = {SONIC_MGMT_ADAPTER}
+
+    for model_link in topology_model.get("links", []):
+        link_id = str(model_link["id"])
+        endpoints = [str(e) for e in (model_link.get("nodes") or [])]
+        if len(endpoints) != 2:
+            raise ValueError(f"link {link_id} must have exactly two endpoints")
+        for nid in endpoints:
+            adapter = next(a for a in range(1, SONIC_ADAPTER_COUNT) if a not in used[nid])
+            used[nid].add(adapter)
+            iface = _sonic_interface(adapter)
+            prefix = _node_param_prefix(nid)
+            params[f"{prefix}_{link_id}_port_num"] = "0"
+            params[f"{prefix}_{link_id}_iface"] = iface
+            nodes[nid]["links"][link_id] = {"slot": adapter, "interface": iface, "port_number": "0"}
+
+    return {"nodes": nodes}
+
 def _load_router_capabilities():
     with open(CAPABILITIES_PATH, "r") as f:
         return yaml.safe_load(f)
@@ -185,6 +224,10 @@ def derive_media_physical_plan(topology_model, params, values, topology_attribut
 
     for model_node in topology_model.get("nodes", []):
         node_id = str(model_node["id"] if isinstance(model_node, dict) else model_node)
+        if _node_type(topology_attributes, node_id) == SONIC_NODE_TYPE:
+            physical_nodes[node_id] = {"kind": "sonic", "slots": {}, "links": {}}
+            used_ports[node_id] = {"adapters": {SONIC_MGMT_ADAPTER}}
+            continue
         if _is_switch_node(topology_attributes, node_id):
             physical_nodes[node_id] = {
                 "kind": "switch",
@@ -248,6 +291,17 @@ def derive_media_physical_plan(topology_model, params, values, topology_attribut
             "vlan": 1
         }
 
+    def allocate_sonic_endpoint(node_id, link_id):
+        used = used_ports[node_id]["adapters"]
+        adapter = next(a for a in range(1, SONIC_ADAPTER_COUNT) if a not in used)
+        used.add(adapter)
+        iface = _sonic_interface(adapter)
+        prefix = _node_param_prefix(node_id)
+        params[f"{prefix}_{link_id}_port_num"] = "0"
+        params[f"{prefix}_{link_id}_iface"] = iface
+        physical_nodes[node_id]["links"][link_id] = {
+            "slot": adapter, "interface": iface, "port_number": "0"}
+
     for model_link in topology_model.get("links", []):
         link_id = str(model_link["id"])
         endpoints = model_link.get("nodes") or [
@@ -262,6 +316,9 @@ def derive_media_physical_plan(topology_model, params, values, topology_attribut
             raise ValueError(f"link {link_id} has unsupported media {media}")
 
         for endpoint_node in endpoints:
+            if _node_type(topology_attributes, node_id) == SONIC_NODE_TYPE:
+                allocate_sonic_endpoint(node_id, link_id)
+                continue
             node_id = str(endpoint_node)
             if _is_switch_node(topology_attributes, node_id):
                 allocate_switch_endpoint(node_id, link_id)
@@ -277,6 +334,10 @@ def derive_physical_plan(topology_model, params, values, topology_attributes=Non
     This builder assumes each node uses slot0 for all links. A node's slot0
     module must provide enough ports for all incident links.
     """
+    topology_attributes = topology_attributes or {}
+    model_node_ids = [str(n["id"] if isinstance(n, dict) else n) for n in topology_model.get("nodes", [])]
+    if any(_node_type(topology_attributes, nid) == SONIC_NODE_TYPE for nid in model_node_ids):
+        return derive_sonic_plan(topology_model, params, topology_attributes)
     rng = random.Random(f"{seed}:physical") if randomize else None
     topology_attributes = topology_attributes or {}
     if _uses_media_plan(topology_model, topology_attributes):
@@ -806,6 +867,8 @@ def _endpoint_module(plan_nodes, node_id, link_id):
     node_plan = plan_nodes[node_id]
     if node_plan.get("kind") == "switch":
         return "EthernetSwitch"
+    if node_plan.get("kind") == "sonic":
+        return "SONiC-ADAPTER"
     endpoint = node_plan.get("links", {}).get(link_id)
     if endpoint is None:
         raise ValueError(f"physical_plan missing endpoint {node_id}/{link_id}")

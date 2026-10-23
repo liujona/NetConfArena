@@ -1,17 +1,21 @@
 import re
+from .device_profile import PROMPT_RE
 
 def remove_redundant_prompt(text):
-    command_prompts = r'^[A-Za-z0-9_\-]+(?:\([A-Za-z0-9_\-]+\))?[>#]\s?$'
-    
     while True:
-        matches = list(re.finditer(command_prompts, text, re.MULTILINE))
+        matches = list(re.finditer(PROMPT_RE, text, re.MULTILINE))
         if matches:
-            last_match = matches[-1]  # Use the final match.
-            text = text[:last_match.start()] + text[last_match.end():]  # Remove it.
+            last_match = matches[-1]
+            text = text[:last_match.start()] + text[last_match.end():]
         else:
             break
-
     return text
+
+def extract_prompt(text):
+    matches = list(re.finditer(PROMPT_RE, text, re.MULTILINE))
+    if not matches:
+        return ""
+    return text[matches[-1].start():matches[-1].end()]
 
 def clean_configuration(config_text):
     # Remove the leading "Current configuration" line.
@@ -42,15 +46,6 @@ def clean_command_output(command, command_output):
     cleaned_output = re.sub(fr"^.*?{command}\r\n", "", command_output, flags=re.DOTALL)
     return cleaned_output
 
-def extract_prompt(text):
-    command_prompts = r'^[A-Za-z0-9_\-]+(?:\([A-Za-z0-9_\-]+\))?[>#]\s?$'
-    matches = list(re.finditer(command_prompts, text, re.MULTILINE))
-    
-    if matches:
-        last_match = matches[-1]  # Use the final match.
-        last_prompt = text[last_match.start():last_match.end()]
-
-    return last_prompt
 
 def ensure_start_end(lst, start_value, end_value):
     lst = list(lst)
